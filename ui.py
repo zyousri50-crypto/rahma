@@ -4,26 +4,22 @@ from PIL import Image
 import numpy as np
 import os
 
-# 1. إعدادات الصفحة
-st.set_page_config(page_title="Reaper Fruit Scanner", page_icon="🍎")
+# 1. إعدادات الصفحة (شكل بسيط وعملي)
+st.set_page_config(page_title="Fruit Quality Scanner", page_icon="🍎")
 st.title("🍎 نظام فحص جودة الفواكه والخضروات")
 st.write("قم برفع صورة ليقوم الذكاء الاصطناعي بتحديد النوع والجودة فوراً.")
 
-# 2. تحميل الموديل (تم تعديله ليتناسب مع الملفات المرفوعة)
+# 2. تحميل الموديل
 @st.cache_resource
 def load_my_model():
-    # هيحاول يحمل الموديل بالاسم اللي ظاهر في الـ VS Code عندك
     model_path = 'fruit_quality_model.h5'
     if os.path.exists(model_path):
         return tf.keras.models.load_model(model_path)
-    else:
-        # لو مش موجود هيحاول يحمل أي ملف موديل تاني
-        return tf.keras.models.load_model('model.h5')
+    return tf.keras.models.load_model('model.h5')
 
 model = load_my_model()
 
-# 3. الحصول على أسماء الفئات (تم كتابتها يدوياً لتعمل على السيرفر)
-# هذه الأسماء مأخوذة من مجلد التدريب الخاص بك
+# 3. الفئات الـ 18 المعتمدة من مجلد التدريب الخاص بك
 class_names = [
     'freshapples', 'freshbanana', 'freshbittergroud', 'freshcapsicum', 
     'freshcucumber', 'freshokra', 'freshoranges', 'freshpotato', 
@@ -33,15 +29,14 @@ class_names = [
 ]
 
 # 4. واجهة رفع الصور
-uploaded_file = st.file_uploader("اختر صورة فاكهة أو خضار...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("اختر صورة...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # عرض الصورة المرفوعة
     img = Image.open(uploaded_file)
     st.image(img, caption='الصورة المرفوعة', use_container_width=True)
     
     with st.spinner('جاري التحليل...'):
-        # 5. معالجة الصورة لتناسب الموديل (Size 224x224)
+        # 5. معالجة الصورة (224x224)
         img_resized = img.resize((224, 224))
         img_array = np.array(img_resized) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
@@ -50,20 +45,21 @@ if uploaded_file is not None:
         predictions = model.predict(img_array)
         class_idx = np.argmax(predictions)
         
-        # التأكد من أن الـ Index لا يتخطى عدد الفئات
         if class_idx < len(class_names):
             result_label = class_names[class_idx]
             confidence = np.max(predictions) * 100
 
-            # 7. عرض النتيجة بشكل احترافي
+            # 7. عرض النتيجة
             st.divider()
             if "fresh" in result_label.lower():
                 st.success(f"✅ النتيجة: {result_label}")
-                st.info(f"نسبة التأكد: {confidence:.2f}%")
-                st.balloons()
             else:
                 st.error(f"⚠️ النتيجة: {result_label}")
-                st.warning("تنبيه: هذه الفاكهة قد تكون تالفة أو بها عيوب جودة.")
-                st.info(f"نسبة التأكد: {confidence:.2f}%")
+                st.warning("تنبيه: هذه الثمرة قد تكون تالفة.")
+            
+            st.info(f"نسبة التأكد: {confidence:.2f}%")
         else:
-            st.error("خطأ: الموديل يعطي نتائج خارج نطاق الفئات المعرفة.")
+            st.error("خطأ: الصنف المكتشف غير مدرج.")
+
+st.markdown("---")
+st.caption("Developed by Zakaria Yousri")
